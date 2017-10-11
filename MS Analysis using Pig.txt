@@ -1,0 +1,280 @@
+Million Song Test DataSet Analysis using PigLatin 
+
+
+Problem Statement:
+------------------
+Discovering songs for those artists that are associated with the culture of different countries.
+
+Key Learning:
+-------------
+1. Analysis large datasets easily and efficiently
+2. Using data flow programming language "Pig Latin" for analysis
+3. Data compression using LZO codec
+4. PigLatin UDF "DataFu" (Created by LinkedIn) for data localization
+5. Working with Hierarchical Data Format (HDF5)
+
+
+Login to Server (XShell/Putty/SuperPutty)
+=========================================
+
+URL: <Your Choice>
+UserName: <Your Choice>
+Password: <Your Choice>
+
+Download HDF5 Converter
+=======================
+
+curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
+python get-pip.py
+pip install -U pip setuptools
+
+To Install hdf5 for CentOS
+sudo yum -y install make gcc gcc-c++ gcc-gfortran     cmake zlib-devel    openmpi openmpi-devel     fftw fftw-devel     gsl gsl-devel gmp
+
+sudo yum -y install python-devel     docutils python-nose     numpy numpy-f2py    python-docutils
+
+wget http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
+sudo rpm --import http://apt.sw.be/RPM-GPG-KEY.dag.txt
+
+Verify the package
+------------------
+sudo rpm -K rpmforge-release-0.5.3-1.el6.rf.*.rpm
+
+Package installation
+--------------------
+sudo rpm -i rpmforge-release-0.5.3-1.el6.rf.*.rpm
+sudo yum -y install htop
+
+sudo yum -y remove numpy
+wget ftp://ftp.pbone.net/mirror/ftp5.gwdg.de/pub/opensuse/repositories/home:/strohel/CentOS_CentOS-6/x86_64/python-numpy-1.6.1-17.1.x86_64.rpm
+sudo rpm -Uvh python-numpy-1.6.1-17.1.x86_64.rpm
+
+pip install numpy --upgrade
+
+sudo yum -y install hdf5 hdf5-devel
+sudo easy_install h5py
+
+h5dump -n <filename>
+h5dump -d <dataset> -o sample -y <filename>
+h5dump -x <filename> > sample.xml
+
+sudo pip install unittest2
+sudo pip install tables
+
+Create msdHDF5toCSV and hdf5_getters python
+=============================================
+vi msdHDF5toCSV.py
+Add new column. Change basedir and ext to .h5
+
+Load python
+===========
+
+python
+import hdf5_getters
+import numpy as np
+import msdHDF5toCSV
+
+/*
+Once operation gets over exit from python
+Check you CSV file "SongCSV.csv" at "/project" directory
+Load this file to your HDFS at user directory
+For your convenience, it is already loaded under "/project_july", so please do not reload to Dezyre cluster
+*/
+
+
+Download 'datafu' UDFs for Harvesine's formula
+==============================================
+wget http://www.java2s.com/Code/JarDownload/datafu/datafu-0.0.4.jar.zip
+unzip datafu-0.0.4.jar.zip
+
+/*
+Load this jar file to your HDFS at user directory
+For your convenience,it is already loaded under "/project_july", so please do not reload to Dezyre cluster
+*/
+
+About Pig
+=========
+1.	Pig is a high level language to create MapReduce programs and a data flow system that renders you a simple language platform popularly known as Pig Latin that can be used for manipulating data and queries.
+2.	Pig is used for semi structured data.
+
+2006 	- Pig was originally developed at Yahoo Research for researchers to have an ad-hoc way of creating and executing map-reduce jobs on very large data sets
+2007 	- It was moved into the Apache Software Foundation
+
+Pig Latin Data Types
+====================
+Basic					
+-----					
+int					
+long
+bytearray				
+chararray				
+float
+double
+boolean
+datetime
+biginteger
+bigdecimal
+
+Complex
+-------
+map 	- set of key value pair - keys must be of chararray and values can be of any data type
+	[<key>, <value>]
+tuple 	- ordered set of feeds of any basic data types		
+	(1, 'dezyre', 'student1')
+bag	- collection of tuples 
+	{(1, 'dezyre', 'student1'), (2, 'project')}
+
+
+Enter into Pig mapreduce mode
+=============================
+SET default_parallel 10 
+--Require LZO codec for compression, setting given below
+SET pig.tmpfilecompression true
+SET pig.tmpfilecompression.codec lzo
+
+LZO Codec Setting
+-----------------
+Install on all machines:
+------------------------
+On Mac OS:
+sudo port install lzop lzo2
+
+On RH or CentOS:
+sudo yum install lzo lzo-devel
+
+On Debian or ubuntu:
+sudo apt-get install liblzo2-dev
+
+Step2: Installing hadoop-lzo library
+Download on all machine from:
+cd /usr/hdp/2.2.9.0-3393/hadoop/lib/
+wget http://www.java2s.com/Code/JarDownload/hadoop-lzo/hadoop-lzo-0.4.3.jar.zip
+
+Set compression codecs libraries in core-site.xml:
+<property>
+  <name>io.compression.codecs</name>
+  <value>org.apache.hadoop.io.compress.GzipCodec,
+      org.apache.hadoop.io.compress.DefaultCodec,
+      org.apache.hadoop.io.compress.BZip2Codec,
+      com.hadoop.compression.lzo.LzoCodec,
+      com.hadoop.compression.lzo.LzopCodec
+  </value>
+</property>
+<property>
+  <name>io.compression.codec.lzo.class</name>
+  <value>com.hadoop.compression.lzo.LzoCodec</value>
+</property>
+Set MapReduce compression configuration in mapred-site.xml:
+<property>
+  <name>mapred.compress.map.output</name>
+  <value>true</value>
+</property>
+<property>
+  <name>mapred.map.output.compression.codec</name>
+  <value>com.hadoop.compression.lzo.LzoCodec</value>
+</property>
+<property>
+  <name>mapred.child.env</name>
+  <value>JAVA_LIBRARY_PATH=$JAVA_LIBRARY_PATH:/path/to/your/hadoop-lzo/libs/native</value>
+</property>
+
+Append HADOOP_CLASSPATH to hadoop-env.sh:
+HADOOP_CLASSPATH=$HADOOP_CLASSPATH:<add your hadoop classpath>
+
+
+Pig CLI/WebConsole
+==================
+SET default_parallel 10
+SET pig.tmpfilecompression true
+SET pig.tmpfilecompression.codec lzo
+SET pig.maxCombinedSplitSize 134217728
+
+--Add Harvsine formula function through "datafu" UDF by LinkedIn
+REGISTER 'hdfs://158.85.202.220/project_july/datafu-0.0.4.jar'
+DEFINE haversineMiles datafu.pig.geo.HaversineDistInMiles();
+
+--Try sample loading of "Million Song Sample Dataset" to a Pig relation "Songs"
+Songs = LOAD '/project_july/SongCSV.csv' USING PigStorage(',');
+
+--Describe the relation with unknown Schema
+DESCRIBE Songs;
+
+--How to work with Unknown Schema relation (Notational position)
+A = FOREACH Songs GENERATE $0;
+
+--Re load the data with defined structure (by default bytearray will be your data type for every field)
+Songs = LOAD '/project_july/SongCSV.csv' USING PigStorage(',') AS (SongNumber:int, SongID:chararray, AlbumID:int, AlbumName:chararray, ArtistID:chararray, ArtistLatitude:double, ArtistLocation:chararray, ArtistLongitude:double, ArtistName:chararray, Danceability:double, Duration:double, KeySignature:int, KeySignatureConfidence:double, Tempo:double,TimeSignature:int, TimeSignatureConfidence:double, Title:chararray,Year:int, SongHotness:double, SongPreview:int);
+
+--To View Top5 records
+Top5 = LIMIT Songs 5; 
+DUMP Top5;
+
+--To View the Total record counts
+A = GROUP Songs ALL;
+total_counts = FOREACH A GENERATE COUNT(Songs);
+DUMP total_counts
+
+--To clean the dataset you can use "REPLACE" command
+clean_data = FOREACH Songs GENERATE REPLACE($1,'nan','');
+
+--To remove the header
+Songs_data = FILTER Songs BY (SongNumber > 0);
+
+--Filter only desired fields for analysis
+Projected = FOREACH Songs_data GENERATE ArtistLatitude AS artistLat, ArtistLongitude AS artistLong, ArtistName AS artistName, SongHotness AS songHotness, Title AS songTitle, SongPreview AS songPreview;
+
+--Apply Conditions of SongHotness (ge 0.5) and remove unwanted records (NULLs from Latitude and Longitude)
+Filtered = FILTER Projected BY (songHotness >= 0.5) AND (artistLat IS NOT NULL) AND (artistLong IS NOT NULL);
+
+--Create another same relation for CROSS join to take the average distance from one artist than others
+Filtered2 = FOREACH Filtered GENERATE songPreview as song2Preview, artistLat AS artist2Lat, artistLong AS artist2Long;
+
+--Do the cross join
+Crossed = CROSS Filtered, Filtered2;
+
+--Remove artist's own mapping
+Different = FILTER Crossed BY songPreview != song2Preview;
+
+--Calculate the distance of an artist's song with other artists' songs using Haversine formula
+Distanced = FOREACH Different GENERATE artistLat..songPreview, haversineMiles(artistLat, artistLong, artist2Lat, artist2Long) as distance;
+
+--Calculate the avg distance for an artist's songs
+Grouped = GROUP Distanced BY artistLat..songPreview;
+AvgDistanced = FOREACH Grouped GENERATE FLATTEN(group), AVG(Distanced.distance) AS distanceAvg;
+
+/*
+--Alternate way
+AvgDistanced = FOREACH Grouped {
+        Distances = Distanced.distance;
+        GENERATE FLATTEN(group), AVG(Distances) AS distanceAvg;
+}
+
+--FLATTEN example  (to separate out tuples from a bag or records from a tuple)
+A = LIMIT Songs_data 5;
+B = GROUP A ALL;
+C = FOREACH B GENERATE FLATTEN($1);
+*/
+
+--Find the most popular songs by an artist's location and songHotness
+Locationed = GROUP AvgDistanced BY (artistLat, artistLong);
+Popular = FOREACH Locationed {
+        OrderedSongs = ORDER AvgDistanced BY songHotness DESC;
+        TopSong = LIMIT OrderedSongs 1;
+        GENERATE FLATTEN(TopSong);
+}
+
+--Order popular songs by the average distance and filter out Top 100 songs
+Ordered = ORDER Popular BY distanceAvg DESC;
+Top100Songs = LIMIT Ordered 100;
+
+--Store the Top 100 songs to HDFS
+STORE Displayed INTO '/user/hduser/ms_pig_analysis.out' USING PigStorage(',');
+
+
+--Restricting your results to a particular location (latitude and longitude)
+A = LOAD '/user/hduser/ms_pig_analysis.out/part-r-00000' USING PigStorage(','); 
+--Approximate US geographic coordinates
+B = FILTER A BY ((double)$0 > 23.0) AND ((double)$0 < 50.0) AND ((double)$1 < -65) AND ((double)$1 > -125);
+
+
+/*
